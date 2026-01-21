@@ -23,7 +23,7 @@ use crate::shares::share_commitment::ShareCommitment;
 use bitcoin::{
     Address, Block, BlockHash, CompactTarget, CompressedPublicKey, Target, Transaction,
     TxMerkleNode, Txid, VarInt, bip152,
-    block::Header,
+    block::{self, Header},
     consensus::{Decodable, Encodable},
     hashes::Hash,
 };
@@ -270,8 +270,15 @@ impl ShareBlock {
             match bitcoin::consensus::deserialize(&block_hex) {
                 Ok(block) => block,
                 Err(e) => {
-                    println!("Failed to deserialize genesis block: {e}");
-                    panic!("Invalid genesis block data");
+                    // it's not header and shortids try from bitcoin block
+                    let block: block::Block = bitcoin::consensus::deserialize(&block_hex).unwrap();
+                    bip152::HeaderAndShortIds::from_block(
+                        &block,
+                        u32::from_be_bytes(network.magic().to_bytes()).into(),
+                        2,
+                        &[],
+                    )
+                    .unwrap()
                 }
             };
         let header = ShareHeader {
