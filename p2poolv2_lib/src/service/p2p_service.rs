@@ -17,6 +17,7 @@ use crate::node::p2p_message_handlers::handle_request;
 use crate::node::p2p_message_handlers::receivers::block_receiver::BlockReceiverHandle;
 use crate::node::request_response_handler::block_fetcher::BlockFetcherHandle;
 use crate::node::validation_worker::ValidationSender;
+use crate::service::peer_state::PeerState;
 #[cfg(test)]
 #[mockall_double::double]
 use crate::shares::chain::chain_store_handle::ChainStoreHandle;
@@ -27,7 +28,7 @@ use crate::utils::time_provider::TimeProvider;
 
 /// Request context wrapping all inputs for the service call.
 pub struct RequestContext<C, T> {
-    pub peer: libp2p::PeerId,
+    pub peer: Arc<PeerState>,
     pub request: Message,
     pub chain_store_handle: ChainStoreHandle,
     pub response_channel: C,
