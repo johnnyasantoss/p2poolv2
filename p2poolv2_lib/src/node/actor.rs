@@ -71,6 +71,21 @@ impl NodeHandle {
         pplns_window: Arc<RwLock<PplnsWindow>>,
     ) -> Result<(Self, oneshot::Receiver<()>), Box<dyn Error + Send + Sync>> {
         let (command_tx, command_rx) = mpsc::channel::<Command>(32);
+        let pool_difficulty = PoolDifficulty::build(&chain_store_handle)
+            .expect("Failed to build pool difficulty from chain store");
+        let pool_signature = config
+            .stratum
+            .pool_signature
+            .as_deref()
+            .unwrap_or("")
+            .as_bytes()
+            .to_vec();
+        let share_validator: Arc<DefaultShareValidator> = Arc::new(DefaultShareValidator::new(
+            pool_difficulty,
+            config.stratum.difficulty_multiplier as u128,
+            pool_signature,
+        ));
+
         let (node_actor, stopping_rx) = NodeActor::new(
             config,
             chain_store_handle,
@@ -80,6 +95,7 @@ impl NodeHandle {
             monitoring_event_sender,
             notify_tx,
             pplns_window,
+            share_validator,
         )
         .unwrap();
 
@@ -307,6 +323,7 @@ impl NodeActor {
         monitoring_event_sender: MonitoringEventSender,
         notify_tx: NotifySender,
         pplns_window: Arc<RwLock<PplnsWindow>>,
+        _share_validator: Arc<dyn ShareValidator + Send + Sync>,
     ) -> Result<(Self, oneshot::Receiver<()>), Box<dyn Error>> {
         // Create organise channel
         let (organise_tx, organise_rx) = create_organise_channel();

@@ -49,6 +49,7 @@ use libp2p::{
 };
 use std::collections::HashSet;
 use std::error::Error;
+use std::fmt::Debug;
 use std::net::IpAddr;
 use std::sync::Arc;
 use std::time::Duration;
