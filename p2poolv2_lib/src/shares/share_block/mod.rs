@@ -23,7 +23,7 @@ use crate::shares::share_commitment::ShareCommitment;
 use bitcoin::{
     Address, Block, BlockHash, CompactTarget, CompressedPublicKey, Target, Transaction,
     TxMerkleNode, Txid, VarInt, bip152,
-    block::Header,
+    block::{self, Header},
     consensus::{Decodable, Encodable},
     hashes::Hash,
 };
@@ -338,7 +338,15 @@ impl ShareBlock {
     ///
     /// Uses network to create coinbase transaction for miner that
     /// mined genesis block. This is a NUMPS miner pubkey.
-    fn build_genesis(genesis_data: &genesis::GenesisData, network: bitcoin::Network) -> Self {
+    ///
+    /// The genesis data can be stored in two formats:
+    /// - **HeaderAndShortIds** (signet, mainnet): Direct BIP-152 compact block format.
+    /// - **Full Bitcoin block** (testnet4): Used for development/testing. This path
+    ///   converts a raw [block::Block] to [HeaderAndShortIds].
+    pub(crate) fn build_genesis(
+        genesis_data: &genesis::GenesisData,
+        network: bitcoin::Network,
+    ) -> Self {
         let public_key = genesis_data
             .public_key
             .parse::<CompressedPublicKey>()
@@ -355,9 +363,17 @@ impl ShareBlock {
         let compact_block: bip152::HeaderAndShortIds =
             match bitcoin::consensus::deserialize(&block_hex) {
                 Ok(block) => block,
-                Err(e) => {
-                    println!("Failed to deserialize genesis block: {e}");
-                    panic!("Invalid genesis block data");
+                Err(_) => {
+                    // Fallback path: Deserialize as full block and convert to compact block.
+                    let block: block::Block = bitcoin::consensus::deserialize(&block_hex)
+                        .expect("valid block genesis sharechain block or bitcoin block");
+                    bip152::HeaderAndShortIds::from_block(
+                        &block,
+                        u32::from_be_bytes(network.magic().to_bytes()).into(),
+                        2,
+                        &[],
+                    )
+                    .expect("valid block genesis sharechain block or bitcoin block")
                 }
             };
         let header = ShareHeader {
@@ -506,6 +522,20 @@ mod tests {
         assert_eq!(
             share.header.bitcoin_header.block_hash().to_string(),
             "00000008819873e925422c1ff0f99f7cc9bbb232af63a077a480a3633bee1ef6"
+        );
+    }
+
+    #[test]
+    fn test_build_genesis_testnet4_full_bitcoin_block() {
+        let genesis = genesis::genesis_data(bitcoin::Network::Testnet4).unwrap();
+        let share = ShareBlock::build_genesis(&genesis, bitcoin::Network::Testnet4);
+
+        assert_eq!(share.header.prev_share_blockhash, BlockHash::all_zeros());
+        assert!(share.header.uncles.is_empty());
+        assert!(share.transactions[0].is_coinbase());
+        assert_eq!(
+            share.header.bitcoin_header.block_hash().to_string(),
+            "00000000da84f2bafbbc53dee25a72ae507ff4914b867c565be350b0da8bf043"
         );
     }
 
