@@ -20,7 +20,7 @@ RUN apk add --no-cache \
     capnproto-dev
 
 # Clone the latest release from Bitcoin Core repository
-RUN git clone --depth 1 --branch v30.2 https://github.com/bitcoin/bitcoin.git /bitcoin
+RUN git clone --depth 1 --branch 2024-10-t4-reorg-miner https://github.com/fjahr/bitcoin.git /bitcoin
 
 # Build Bitcoin Core
 WORKDIR /bitcoin
