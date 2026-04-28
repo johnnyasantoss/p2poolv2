@@ -13,7 +13,7 @@ services:
       - "28332:28332" # ZMQ port is always the same
     environment:
       - NETWORK=${NETWORK:-signet}
-    command: -conf=/etc/bitcoin/bitcoin-${NETWORK:-signet}.conf -datadir=/data
+    init: true
     restart: unless-stopped
     networks:
       - p2poolv2_network

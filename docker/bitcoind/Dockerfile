@@ -71,12 +71,12 @@ EXPOSE 38332 38333
 # Ports for testnet4
 EXPOSE 48332 48333
 
-COPY signet/bitcoin-signet.conf /etc/bitcoin/
-COPY testnet4/bitcoin-testnet4.conf /etc/bitcoin/
+COPY bitcoin.conf /etc/bitcoin/
 COPY bcli /usr/local/bin/
 COPY bootstrap.sh /usr/local/bin/
 
 HEALTHCHECK --interval=10s --timeout=5s --start-period=600s --retries=3 \
-    CMD ["ash", "-c", "HEIGHT=$(bitcoin-cli -datadir=/data/ -conf=/etc/bitcoin/bitcoin-${NETWORK:-signet}.conf getblockcount 2>/dev/null) && [ \"$HEIGHT\" -ge 32 ]"]
+    CMD ["ash", "-c", "HEIGHT=$(bitcoin-cli -datadir=/data/ -conf=/etc/bitcoin/bitcoin.conf -chain=${NETWORK:-signet} getblockcount 2>/dev/null) && [ \"$HEIGHT\" -ge 32 ]"]
 
-ENTRYPOINT ["bitcoind"]
+SHELL [ "ash", "-c" ]
+ENTRYPOINT bitcoind -datadir=/data/ -conf=/etc/bitcoin/bitcoin.conf -chain="${NETWORK:-signet}"
