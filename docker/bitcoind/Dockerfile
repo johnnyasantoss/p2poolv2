@@ -16,15 +16,19 @@ RUN apk add --no-cache \
     git \
     curl \
     python3 \
+    ccache \
     capnproto \
     capnproto-dev
 
+ENV CCACHE_DIR=/ccache
+
 # Clone the latest release from Bitcoin Core repository
-RUN git clone --depth 1 --branch v30.2 https://github.com/bitcoin/bitcoin.git /bitcoin
+RUN git clone --depth 1 --branch v30.1 https://github.com/bitcoin/bitcoin.git /bitcoin
 
 # Build Bitcoin Core
 WORKDIR /bitcoin
-RUN cmake -B build \
+RUN --mount=type=cache,target=/ccache \
+    cmake -B build \
     -DWITH_MINIUPNPC=OFF \
     -DBUILD_GUI=OFF \
     -DBUILD_TESTS=OFF \
@@ -35,8 +39,11 @@ RUN cmake -B build \
     -DWITH_ZMQ=ON \
     -DBUILD_CLI=ON \
     -DBUILD_UTIL=ON \
-    -DCMAKE_BUILD_TYPE=RelWithDebInfo
-RUN cmake --build build -j$(nproc)
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+    -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+RUN --mount=type=cache,target=/ccache \
+    cmake --build build -j$(nproc)
 
 FROM base AS runtime
 
@@ -53,7 +60,8 @@ RUN apk add --no-cache \
     libzmq \
     libstdc++ \
     sqlite-libs \
-    python3
+    python3 \
+    capnproto
 
 # Create bitcoin user
 RUN adduser -S bitcoin
@@ -80,4 +88,4 @@ COPY bootstrap.sh /usr/local/bin/
 HEALTHCHECK --interval=10s --timeout=5s --start-period=600s --retries=3 \
     CMD ["ash", "-c", "HEIGHT=$(bitcoin-cli -datadir=/data/ -conf=/etc/bitcoin/bitcoin-${NETWORK:-signet}.conf getblockcount 2>/dev/null) && [ \"$HEIGHT\" -ge 32 ]"]
 
-ENTRYPOINT ["bitcoind"]
+ENTRYPOINT ["bitcoin-node", "-ipcbind=unix"]
