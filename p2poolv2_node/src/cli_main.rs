@@ -15,9 +15,8 @@
 // P2Poolv2. If not, see <https://www.gnu.org/licenses/>.
 
 use p2poolv2_cli::commands;
-use std::error::Error;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> anyhow::Result<()> {
     commands::run().await
 }

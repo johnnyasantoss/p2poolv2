@@ -18,6 +18,7 @@ name = "p2poolv2_cli"
 path = "src/lib.rs"
 
 [dependencies]
+anyhow = { workspace = true }
 p2poolv2_lib = { workspace = true }
 bitcoindrpc = { workspace = true }
 tokio = { workspace = true }

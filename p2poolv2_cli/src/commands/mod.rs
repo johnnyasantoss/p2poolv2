@@ -31,10 +31,25 @@ pub mod shares;
 pub mod transactions;
 
 use crate::commands;
+use anyhow::{Context, Result, anyhow};
 use clap::{ArgGroup, Parser, Subcommand};
 use p2poolv2_lib::config::Config;
-use std::error::Error;
-use tokio::runtime::Runtime;
+use std::fmt::Display;
+
+trait CliResultExt<T> {
+    fn human(self) -> Result<T>;
+    fn human_context(self, context: impl Display) -> Result<T>;
+}
+
+impl<T, E: Display> CliResultExt<T> for std::result::Result<T, E> {
+    fn human(self) -> Result<T> {
+        self.map_err(|error| anyhow!("{error}"))
+    }
+
+    fn human_context(self, context: impl Display) -> Result<T> {
+        self.map_err(|error| anyhow!("{context}: {error}"))
+    }
+}
 
 /// P2Pool v2 CLI utility
 #[derive(Parser, Debug)]
@@ -194,29 +209,33 @@ pub enum PeersCommands {
     },
 }
 
-pub async fn run() -> Result<(), Box<dyn Error>> {
+pub async fn run() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let cli = Cli::parse();
 
     match &cli.command {
         Some(Commands::GenAuth { username, password }) => {
-            commands::gen_auth::execute(username.clone(), password.clone())?;
+            commands::gen_auth::execute(username.clone(), password.clone())
+                .human_context("Failed to generate API authentication credentials")?;
         }
         Some(Commands::Db { command }) => {
             let db_path = cli
                 .db_path
                 .as_ref()
-                .ok_or("--db-path required for db commands")?;
-            commands::db::execute(command, db_path)?;
+                .ok_or_else(|| anyhow!("--db-path is required for db commands"))?;
+            commands::db::execute(command, db_path)
+                .human_context("Database maintenance command failed")?;
         }
         Some(Commands::Peers { command }) => {
-            let config_path = cli
-                .config
-                .as_ref()
-                .ok_or("Config file required for peers commands. Use --config")?;
-            let config = Config::load(config_path)?;
-            commands::peers::execute(command, &config.api).await?;
+            let config_path = cli.config.as_ref().ok_or_else(|| {
+                anyhow!("Config file is required for peers commands. Use --config")
+            })?;
+            let config = Config::load(config_path)
+                .with_context(|| format!("Failed to load config from {config_path}"))?;
+            commands::peers::execute(command, &config.api)
+                .await
+                .human_context("Peer command failed")?;
         }
         Some(
             Commands::Info
@@ -230,55 +249,58 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
         ) => {
             if let Some(db_path) = &cli.db_path {
                 // Direct database query mode (offline, no running node required)
-                let store = commands::db_query::open_store(db_path)?;
+                let store = commands::db_query::open_store(db_path)
+                    .human_context(format!("Failed to open RocksDB store at {db_path}"))?;
 
                 match &cli.command {
                     Some(Commands::Info) => {
-                        commands::db_query::info(&store)?;
+                        commands::db_query::info(&store).human()?;
                     }
                     Some(Commands::PplnsShares {
                         limit,
                         start_time,
                         end_time,
                     }) => {
-                        commands::db_query::pplns_shares(&store, *limit, *start_time, *end_time)?;
+                        commands::db_query::pplns_shares(&store, *limit, *start_time, *end_time)
+                            .human()?;
                     }
                     Some(Commands::Shares { to, num, dot, .. }) => {
                         if *dot {
-                            commands::db_query::shares_dot(&store, *to, *num)?;
+                            commands::db_query::shares_dot(&store, *to, *num).human()?;
                         } else {
-                            commands::db_query::shares(&store, *to, *num)?;
+                            commands::db_query::shares(&store, *to, *num).human()?;
                         }
                     }
                     Some(Commands::Candidates { to, num, dot }) => {
                         if *dot {
-                            commands::db_query::candidates_dot(&store, *to, *num)?;
+                            commands::db_query::candidates_dot(&store, *to, *num).human()?;
                         } else {
-                            commands::db_query::candidates(&store, *to, *num)?;
+                            commands::db_query::candidates(&store, *to, *num).human()?;
                         }
                     }
                     Some(Commands::Share { hash, height, full }) => {
-                        commands::db_query::share_lookup(&store, hash.clone(), *height, *full)?;
+                        commands::db_query::share_lookup(&store, hash.clone(), *height, *full)
+                            .human()?;
                     }
                     Some(Commands::Dag { to, num, dot }) => {
-                        commands::db_query::dag(&store, *to, *num, *dot)?;
+                        commands::db_query::dag(&store, *to, *num, *dot).human()?;
                     }
                     Some(Commands::Transactions { command }) => {
-                        commands::transactions::execute_db(&store, command)?;
+                        commands::transactions::execute_db(&store, command).human()?;
                     }
                     _ => unreachable!(),
                 }
             } else {
                 // API query mode (requires running node)
-                let config_path = cli
-                    .config
-                    .as_ref()
-                    .ok_or("Config file required for this command. Use --config or --db-path")?;
-                let config = Config::load(config_path)?;
+                let config_path = cli.config.as_ref().ok_or_else(|| {
+                    anyhow!("Config file is required for this command. Use --config or --db-path")
+                })?;
+                let config = Config::load(config_path)
+                    .with_context(|| format!("Failed to load config from {config_path}"))?;
 
                 match &cli.command {
                     Some(Commands::Info) => {
-                        commands::chain_info::execute(&config.api).await?;
+                        commands::chain_info::execute(&config.api).await.human()?;
                     }
                     Some(Commands::PplnsShares {
                         limit,
@@ -291,7 +313,8 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
                             *start_time,
                             *end_time,
                         )
-                        .await?;
+                        .await
+                        .human()?;
                     }
                     Some(Commands::Shares {
                         to,
@@ -307,19 +330,28 @@ pub async fn run() -> Result<(), Box<dyn Error>> {
                             *share_block_transactions,
                             *template_merkle_branches,
                         )
-                        .await?;
+                        .await
+                        .human()?;
                     }
                     Some(Commands::Candidates { to, num, dot: _ }) => {
-                        commands::candidates::execute(&config.api, *to, *num).await?;
+                        commands::candidates::execute(&config.api, *to, *num)
+                            .await
+                            .human()?;
                     }
                     Some(Commands::Share { hash, height, full }) => {
-                        commands::share::execute(&config.api, hash.clone(), *height, *full).await?;
+                        commands::share::execute(&config.api, hash.clone(), *height, *full)
+                            .await
+                            .human()?;
                     }
                     Some(Commands::Dag { to, num, dot: _ }) => {
-                        commands::dag::execute(&config.api, *to, *num).await?;
+                        commands::dag::execute(&config.api, *to, *num)
+                            .await
+                            .human()?;
                     }
                     Some(Commands::Transactions { command }) => {
-                        commands::transactions::execute_api(&config.api, command).await?;
+                        commands::transactions::execute_api(&config.api, command)
+                            .await
+                            .human()?;
                     }
                     Some(Commands::GenGenesis { miner_pk, network }) => {
                         gen_genesis::execute(&config, miner_pk.clone(), network).await?

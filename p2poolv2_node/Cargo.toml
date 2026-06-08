@@ -18,6 +18,7 @@ name = "p2poolv2_node"
 path = "src/lib.rs"
 
 [dependencies]
+anyhow = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }

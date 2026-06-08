@@ -3244,6 +3244,7 @@ dependencies = [
 name = "p2poolv2_cli"
 version = "0.12.0"
 dependencies = [
+ "anyhow",
  "base64",
  "bitcoin",
  "bitcoindrpc",
@@ -3328,6 +3329,7 @@ dependencies = [
 name = "p2poolv2_node"
 version = "0.12.0"
 dependencies = [
+ "anyhow",
  "base64",
  "bitcoin",
  "bitcoindrpc",
