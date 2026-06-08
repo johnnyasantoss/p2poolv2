@@ -56,11 +56,17 @@ impl<T, E: Display> CliResultExt<T> for std::result::Result<T, E> {
 #[command(author, version, about, long_about = None)]
 pub struct Cli {
     /// Path to p2poolv2 config file (not required for gen-auth or --db-path commands)
-    #[arg(short, long, env("P2POOL_CONFIG"), global = true)]
+    #[arg(
+        short,
+        long,
+        env("P2POOL_CONFIG"),
+        default_value("config.toml"),
+        global = true
+    )]
     pub config: Option<String>,
 
     /// Path to RocksDB database directory for direct offline queries
-    #[arg(long, global = true)]
+    #[arg(long, env("P2POOL_STORE_PATH"), global = true)]
     pub db_path: Option<String>,
 
     /// Command to execute
