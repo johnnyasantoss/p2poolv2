@@ -39,6 +39,7 @@ debug = true
 inherits = "release"
 
 [workspace.dependencies]
+anyhow = "1.0"
 libp2p = { version = "0.53", features = [
     "tcp",
     "dns",
