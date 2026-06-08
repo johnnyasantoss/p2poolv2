@@ -51,7 +51,7 @@ impl<T, E: Display> CliResultExt<T> for std::result::Result<T, E> {
     }
 }
 
-/// P2Pool v2 CLI utility
+/// P2Poolv2 CLI utility
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 pub struct Cli {
@@ -238,20 +238,11 @@ pub async fn run() -> Result<()> {
             commands::db::execute(command, db_path)
                 .human_context("Database maintenance command failed")?;
         }
-        Some(Commands::Peers { command }) => {
-            let config_path = cli.config.as_ref().ok_or_else(|| {
-                anyhow!("Config file is required for peers commands. Use --config")
-            })?;
-            let config = Config::load(config_path)
-                .with_context(|| format!("Failed to load config from {config_path}"))?;
-            commands::peers::execute(command, &config.api)
-                .await
-                .human_context("Peer command failed")?;
-        }
         Some(
             Commands::Info
             | Commands::Candidates { .. }
             | Commands::Dag { .. }
+            | Commands::Peers { .. }
             | Commands::Gen { .. }
             | Commands::PplnsShares { .. }
             | Commands::Share { .. }
@@ -312,6 +303,11 @@ pub async fn run() -> Result<()> {
                 match &cli.command {
                     Some(Commands::Info) => {
                         commands::chain_info::execute(&config.api).await.human()?;
+                    }
+                    Some(Commands::Peers { command }) => {
+                        commands::peers::execute(command, &config.api)
+                            .await
+                            .human()?;
                     }
                     Some(Commands::PplnsShares {
                         limit,
