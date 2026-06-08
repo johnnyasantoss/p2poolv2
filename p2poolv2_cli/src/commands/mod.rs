@@ -154,15 +154,24 @@ pub enum Commands {
         #[command(subcommand)]
         command: DbCommands,
     },
+    // Generate API credentials and other useful information
+    Gen {
+        #[command(subcommand)]
+        command: GenCommands,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum GenCommands {
     /// Generate API authentication credentials (salt, password, HMAC)
-    GenAuth {
+    Auth {
         /// Username for API authentication
         username: String,
         /// Password (leave empty to auto-generate, or use "-" to prompt)
         password: Option<String>,
     },
-    /// Sub command to generate a valid genesis ShareBlock
-    GenGenesis {
+    /// Generate a valid genesis ShareBlock
+    Genesis {
         /// Miner public key as hex string
         #[arg(short = 'p', alias = "pk")]
         miner_pk: Option<String>,
@@ -215,10 +224,6 @@ pub async fn run() -> Result<()> {
     let cli = Cli::parse();
 
     match &cli.command {
-        Some(Commands::GenAuth { username, password }) => {
-            commands::gen_auth::execute(username.clone(), password.clone())
-                .human_context("Failed to generate API authentication credentials")?;
-        }
         Some(Commands::Db { command }) => {
             let db_path = cli
                 .db_path
@@ -241,7 +246,7 @@ pub async fn run() -> Result<()> {
             Commands::Info
             | Commands::Candidates { .. }
             | Commands::Dag { .. }
-            | Commands::GenGenesis { .. }
+            | Commands::Gen { .. }
             | Commands::PplnsShares { .. }
             | Commands::Share { .. }
             | Commands::Shares { .. }
@@ -353,8 +358,14 @@ pub async fn run() -> Result<()> {
                             .await
                             .human()?;
                     }
-                    Some(Commands::GenGenesis { miner_pk, network }) => {
-                        gen_genesis::execute(&config, miner_pk.clone(), network).await?
+                    Some(Commands::Gen {
+                        command: GenCommands::Genesis { miner_pk, network },
+                    }) => gen_genesis::execute(&config, miner_pk.clone(), network).await?,
+                    Some(Commands::Gen {
+                        command: GenCommands::Auth { username, password },
+                    }) => {
+                        commands::gen_auth::execute(username, password)
+                            .human_context("Failed to generate API authentication credentials")?;
                     }
                     _ => unreachable!(),
                 }
