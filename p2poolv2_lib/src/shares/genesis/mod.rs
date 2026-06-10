@@ -46,6 +46,7 @@ pub fn genesis_data(network: bitcoin::Network) -> Result<GenesisData, Box<dyn Er
         bitcoin::Network::Bitcoin => (1776855600, 0, include_str!("main.rs").into()),
         bitcoin::Network::Signet => (1776855600, 0, include_str!("signet.rs").into()),
         bitcoin::Network::Testnet4 => (1778097600, 130754, include_str!("testnet4.rs").into()),
+        bitcoin::Network::Testnet => (1781033644, 4987679, include_str!("testnet3.rs").into()),
         _ => return Err("Unsupported network".into()),
     };
 

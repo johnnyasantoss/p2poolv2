@@ -74,6 +74,7 @@ EXPOSE 48332 48333
 
 COPY signet/bitcoin-signet.conf /etc/bitcoin/
 COPY testnet4/bitcoin-testnet4.conf /etc/bitcoin/
+COPY test/bitcoin-test.conf /etc/bitcoin/
 COPY bcli /usr/local/bin/
 COPY bootstrap.sh /usr/local/bin/
 

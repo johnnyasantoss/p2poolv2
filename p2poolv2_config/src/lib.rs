@@ -86,7 +86,7 @@ pub struct StratumConfig<State = Raw> {
     pub fee_address: Option<String>,
     /// The fee basis points
     pub fee: Option<u16>,
-    /// The network can be "main", "testnet4" or "signet
+    /// The network can be "main", "test", "testnet4", "signet", or "regtest"
     #[serde(deserialize_with = "deserialize_network")]
     pub network: bitcoin::Network,
     /// The version mask to use for version-rolling

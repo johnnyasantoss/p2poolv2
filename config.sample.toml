@@ -36,7 +36,7 @@ bootstrap_address = "tb1qyazxde6558qj6z3d9np5e6msmrspwpf6k0qggk"
 # In basis points, 1% = 100 basis points. Default 0
 # fee = 0
 zmqpubhashblock = "tcp://127.0.0.1:28332"
-# The network can be "main", "testnet4" or "signet"
+# The network can be "main", "test", "testnet4", "signet", or "regtest"
 network = "signet"
 version_mask = "1fffe000"
 # The difficulty multiplier defines the window size for calculating payout proportions

@@ -332,6 +332,7 @@ impl ShareBlock {
         assert!(
             network == bitcoin::Network::Signet
                 || network == bitcoin::Network::Bitcoin
+                || network == bitcoin::Network::Testnet
                 || network == bitcoin::Network::Testnet4,
             "Network Testnet and Regtest not yet supported"
         );
