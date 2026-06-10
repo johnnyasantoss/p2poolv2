@@ -14,20 +14,11 @@
 // You should have received a copy of the GNU General Public License along with
 // P2Poolv2. If not, see <https://www.gnu.org/licenses/>.
 
-use anyhow::{Context, Result, anyhow, ensure};
-use bitcoin::{
-    self, Block, CompressedPublicKey, Network,
-    consensus::{deserialize, encode::serialize_hex},
-};
+use anyhow::{Context, Result, ensure};
+use bitcoin::{Block, CompressedPublicKey, Network, consensus::deserialize};
 use bitcoindrpc::BitcoindRpcClient;
 use hex::decode;
-use p2poolv2_lib::{
-    node::Config,
-    shares::{
-        genesis::{DEFAULT_MINER_PK, GenesisData},
-        share_block::ShareBlock,
-    },
-};
+use p2poolv2_lib::{node::Config, shares::genesis::DEFAULT_MINER_PK};
 use tracing::info;
 
 /// Execute the gen-genesis command
@@ -77,24 +68,14 @@ pub async fn execute(config: &Config, public_key: Option<String>, network: &str)
         .context("Miner public key must be a compressed public key encoded as 33-byte hex")?;
 
     let timestamp = bitcoin_block.header.time;
-    let genesis_data = GenesisData {
-        public_key,
-        bitcoin_block_hex,
-        bitcoin_height,
-        timestamp,
-    };
     let network: Network = Network::from_core_arg(network).with_context(|| {
         format!(
-            "Invalid Bitcoin network '{network}'. Expected bitcoin, testnet4, signet, or regtest"
+            "Invalid Bitcoin network '{network}'. Expected bitcoin, test, testnet4, signet, or regtest"
         )
     })?;
-    let block = ShareBlock::build_genesis(&genesis_data, network)
-        .map_err(|error| anyhow!("Failed to build the genesis share block: {error}"))?;
 
-    let block_ser = serialize_hex(&block);
-
-    println!("Generated a shareblock (hex):");
-    println!("{block_ser}");
+    println!("Bitcoin block hex (copy into the genesis file):");
+    println!("{}", bitcoin_block_hex);
 
     println!();
     println!(
