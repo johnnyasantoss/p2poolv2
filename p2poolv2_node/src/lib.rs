@@ -233,23 +233,14 @@ pub async fn build_node(config: Config) -> Result<(NodeHandles, NodeRunner), Exi
         }
     };
 
-    let exit_sender_gbt = exit_sender.clone();
-    let exit_receiver_gbt = exit_sender.subscribe();
-    tokio::spawn(async move {
-        if let Err(e) = start_gbt(
-            bitcoinrpc_config_cloned,
-            notify_tx_for_gbt,
-            GBT_POLL_INTERVAL,
-            stratum_config.network,
-            zmq_trigger_rx,
-        )
-        .await
-            && *exit_receiver_gbt.borrow() == ShutdownReason::None
-        {
-            tracing::error!("Failed to fetch block template. Shutting down. \n {e}");
-            let _ = exit_sender_gbt.send(ShutdownReason::Error);
-        }
-    });
+    start_template_watcher(
+        exit_sender.clone(),
+        exit_sender.subscribe(),
+        &stratum_config,
+        notify_tx_for_gbt,
+        bitcoinrpc_config_cloned,
+        zmq_trigger_rx,
+    );
 
     let connections_handle = start_connections_handler().await;
 
@@ -407,4 +398,45 @@ pub async fn build_node(config: Config) -> Result<(NodeHandles, NodeRunner), Exi
     };
 
     Ok((handles, runner))
+}
+
+fn start_template_watcher(
+    exit_sender_gbt: watch::Sender<ShutdownReason>,
+    exit_receiver_gbt: watch::Receiver<ShutdownReason>,
+    StratumConfig { network, .. }: &StratumConfig<Parsed>,
+    notify_gbt_tx: mpsc::Sender<NotifyCmd>,
+    bitcoinrpc_config_cloned: BitcoinRpcConfig,
+    zmq_trigger_rx: mpsc::Receiver<()>,
+) {
+    let network = *network;
+    tokio::spawn(async move {
+        #[cfg(not(feature = "ipc"))]
+        let res = start_gbt(
+            bitcoinrpc_config_cloned,
+            notify_gbt_tx,
+            GBT_POLL_INTERVAL,
+            network,
+            zmq_trigger_rx,
+        )
+        .await;
+        #[cfg(feature = "ipc")]
+        let res = start_gbt(
+            bitcoinrpc_config_cloned,
+            notify_gbt_tx,
+            GBT_POLL_INTERVAL,
+            network,
+            zmq_trigger_rx,
+        )
+        .await;
+
+        match res {
+            Err(e) if *exit_receiver_gbt.borrow() == ShutdownReason::None => {
+                tracing::error!("Failed to fetch block template. Shutting down. \n {e}");
+                let _ = exit_sender_gbt.send(ShutdownReason::Error);
+            }
+            _ => (),
+        }
+
+        debug!("GBT watcher launched");
+    });
 }

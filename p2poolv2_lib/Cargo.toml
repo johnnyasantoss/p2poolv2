@@ -14,6 +14,7 @@ rust-version.workspace = true
 publish.workspace = true
 
 [features]
+default = ["ipc"]
 hydrapool-pplns-accounting = []
 test-utils = ["dep:rand", "dep:tempfile", "p2poolv2_config/test-utils"]
 # No-PoW load-test simulation. Stubs out proof-of-work verification on the
@@ -21,6 +22,7 @@ test-utils = ["dep:rand", "dep:tempfile", "p2poolv2_config/test-utils"]
 # can be emitted without hashing. MUST NEVER be enabled in a release build.
 # See docs/simulation/load-test-plan.md.
 sim = ["dep:rand"]
+ipc = ["dep:bitcoin-capnp"]
 
 [dependencies]
 # Optional test utilities dependencies
@@ -55,6 +57,7 @@ chrono = { workspace = true }
 dashmap = { workspace = true }
 uint = { workspace = true }
 rlimit = "0.11.0"
+bitcoin-capnp = { workspace = true, optional = true }
 
 [dev-dependencies]
 bitcoindrpc = { path = "../bitcoindrpc", features = ["test-utils"] }

@@ -100,3 +100,5 @@ tower = "0.5"
 rand = "0.10"
 temp-env = "0.3.6"
 test-log = { version = "0.2.17", features = ["trace"] }
+# TODO: pin this to public version
+bitcoin-capnp = { path = "../bitcoin-capnp/" }
