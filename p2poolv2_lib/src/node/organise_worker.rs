@@ -38,7 +38,7 @@ use crate::shares::share_block::{ShareBlock, ShareHeader};
 use crate::shares::validation::ShareValidator;
 use crate::store::dag_store::ShareInfo;
 use crate::store::writer::StoreError;
-use crate::stratum::work::notify::{NotifyCmd, NotifySender};
+use crate::stratum::work::notify::{Command as StratumNotifyCommand, NotifySender};
 use std::collections::BTreeMap;
 use std::fmt;
 use std::sync::{Arc, RwLock};
@@ -391,7 +391,12 @@ impl OrganiseWorker {
         debug!(
             "Confirmed height {confirmed_height} caught up to candidate tip {candidate_tip_height}. Sending new work to miners."
         );
-        if self.notify_tx.send(NotifyCmd::NewNotify).await.is_err() {
+        if self
+            .notify_tx
+            .send(StratumNotifyCommand::NewNotify)
+            .await
+            .is_err()
+        {
             error!("Notify channel closed. Cannot send new work to miners.");
         }
     }
@@ -428,11 +433,11 @@ mod tests {
     use crate::shares::chain::chain_store_handle::MockChainStoreHandle;
     use crate::shares::validation::MockDefaultShareValidator;
     use crate::store::block_tx_metadata::BlockMetadata;
-    use crate::stratum::work::notify::{NotifyCmd, NotifyReceiver};
+    use crate::stratum::work::notify::{Command as StratumNotifyCommand, NotifyReceiver};
 
     /// Create a notify channel for tests, returning the sender and receiver.
     fn create_test_notify_channel() -> (NotifySender, NotifyReceiver) {
-        tokio::sync::mpsc::channel::<NotifyCmd>(10)
+        tokio::sync::mpsc::channel::<StratumNotifyCommand>(10)
     }
 
     /// Create a mock PplnsWindow wrapped in Arc<RwLock<>> for tests.
@@ -706,7 +711,7 @@ mod tests {
         // Verify NewNotify was sent on the notify channel
         let cmd = notify_rx.try_recv();
         assert!(cmd.is_ok());
-        assert!(matches!(cmd.unwrap(), NotifyCmd::NewNotify));
+        assert!(matches!(cmd.unwrap(), StratumNotifyCommand::NewNotify));
     }
 
     #[tokio::test]

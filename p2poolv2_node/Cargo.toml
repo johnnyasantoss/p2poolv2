@@ -41,6 +41,7 @@ required-features = ["debug-tools"]
 
 [features]
 debug-tools = []
+ipc = ["p2poolv2_lib/ipc"]
 
 [dev-dependencies]
 p2poolv2_lib = { workspace = true, features = ["test-utils"] }

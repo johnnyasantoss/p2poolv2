@@ -23,7 +23,7 @@ RUN apk add --no-cache \
 ENV CCACHE_DIR=/ccache
 
 # Clone the latest release from Bitcoin Core repository
-RUN git clone --depth 1 --branch v30.1 https://github.com/bitcoin/bitcoin.git /bitcoin
+RUN git clone --depth 1 --branch v31.0 https://github.com/bitcoin/bitcoin.git /bitcoin
 
 # Build Bitcoin Core
 WORKDIR /bitcoin

@@ -21,7 +21,7 @@ use p2poolv2_lib::shares::chain::chain_store_handle::ChainStoreHandle;
 use p2poolv2_lib::store::Store;
 use p2poolv2_lib::store::writer::{StoreHandle, StoreWriter, write_channel};
 use p2poolv2_lib::stratum::emission::Emission;
-use p2poolv2_lib::stratum::work::notify::NotifyCmd;
+use p2poolv2_lib::stratum::work::notify::Command as StratumNotifyCommand;
 use p2poolv2_lib::{node::actor::NodeHandle, shares::share_block::ShareBlock};
 use std::sync::{Arc, RwLock};
 
@@ -117,7 +117,7 @@ async fn test_three_nodes_connectivity() {
 
     // Start three nodes
     let (monitoring_tx1, _monitoring_rx1) = create_monitoring_event_channel();
-    let (notify_tx1, _notify_rx1) = tokio::sync::mpsc::channel::<NotifyCmd>(10);
+    let (notify_tx1, _notify_rx1) = tokio::sync::mpsc::channel::<StratumNotifyCommand>(10);
     let (node1_handle, _stop_rx1) = NodeHandle::new(
         config1,
         chain_store_handle1,
@@ -131,7 +131,7 @@ async fn test_three_nodes_connectivity() {
     .expect("Failed to create node 1");
     tokio::time::sleep(Duration::from_millis(300)).await;
     let (monitoring_tx2, _monitoring_rx2) = create_monitoring_event_channel();
-    let (notify_tx2, _notify_rx2) = tokio::sync::mpsc::channel::<NotifyCmd>(10);
+    let (notify_tx2, _notify_rx2) = tokio::sync::mpsc::channel::<StratumNotifyCommand>(10);
     let (node2_handle, _stop_rx2) = NodeHandle::new(
         config2,
         chain_store_handle2,
@@ -145,7 +145,7 @@ async fn test_three_nodes_connectivity() {
     .expect("Failed to create node 2");
     tokio::time::sleep(Duration::from_millis(300)).await;
     let (monitoring_tx3, _monitoring_rx3) = create_monitoring_event_channel();
-    let (notify_tx3, _notify_rx3) = tokio::sync::mpsc::channel::<NotifyCmd>(10);
+    let (notify_tx3, _notify_rx3) = tokio::sync::mpsc::channel::<StratumNotifyCommand>(10);
     let (node3_handle, _stop_rx3) = NodeHandle::new(
         config3,
         chain_store_handle3,
@@ -329,7 +329,7 @@ async fn test_three_nodes_share_sync() {
 
     // Start node 1 (seeded with shares)
     let (monitoring_tx1, _monitoring_rx1) = create_monitoring_event_channel();
-    let (notify_tx1, _notify_rx1) = tokio::sync::mpsc::channel::<NotifyCmd>(10);
+    let (notify_tx1, _notify_rx1) = tokio::sync::mpsc::channel::<StratumNotifyCommand>(10);
     let (node1_handle, _stop_rx1) = NodeHandle::new(
         config1,
         chain_store_handle1,
@@ -345,7 +345,7 @@ async fn test_three_nodes_share_sync() {
 
     // Start nodes 2 and 3 (they dial into node 1 and should sync)
     let (monitoring_tx2, _monitoring_rx2) = create_monitoring_event_channel();
-    let (notify_tx2, _notify_rx2) = tokio::sync::mpsc::channel::<NotifyCmd>(10);
+    let (notify_tx2, _notify_rx2) = tokio::sync::mpsc::channel::<StratumNotifyCommand>(10);
     let (node2_handle, _stop_rx2) = NodeHandle::new(
         config2,
         chain_store_handle2,
@@ -358,7 +358,7 @@ async fn test_three_nodes_share_sync() {
     .await
     .expect("Failed to create node 2");
     let (monitoring_tx3, _monitoring_rx3) = create_monitoring_event_channel();
-    let (notify_tx3, _notify_rx3) = tokio::sync::mpsc::channel::<NotifyCmd>(10);
+    let (notify_tx3, _notify_rx3) = tokio::sync::mpsc::channel::<StratumNotifyCommand>(10);
     let (node3_handle, _stop_rx3) = NodeHandle::new(
         config3,
         chain_store_handle3,

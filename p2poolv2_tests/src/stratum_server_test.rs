@@ -19,11 +19,13 @@ use bitcoindrpc::test_utils::{mock_method, setup_mock_bitcoin_rpc};
 #[cfg(test)]
 use p2poolv2_lib::accounting::stats::metrics;
 #[cfg(test)]
+use p2poolv2_lib::stratum::work::notify::Command as StratumNotifyCommand;
+#[cfg(test)]
 use p2poolv2_lib::stratum::{
     self, client_connections,
     messages::{Response, SimpleRequest},
     server::StratumServerBuilder,
-    work::{notify, tracker::start_tracker_actor},
+    work::tracker::start_tracker_actor,
 };
 #[cfg(test)]
 use p2poolv2_lib::test_utils::{TestShareBlockBuilder, setup_test_chain_store_handle};
@@ -43,7 +45,7 @@ async fn test_stratum_server_subscribe() {
     // Setup server - using Arc so we can access it for shutdown
     let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel();
     let connections_handle = client_connections::start_connections_handler().await;
-    let (notify_tx, _notify_rx) = tokio::sync::mpsc::channel::<notify::NotifyCmd>(100);
+    let (notify_tx, _notify_rx) = tokio::sync::mpsc::channel::<StratumNotifyCommand>(100);
 
     let template = std::fs::read_to_string(
         std::path::Path::new(env!("CARGO_MANIFEST_DIR"))

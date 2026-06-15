@@ -14,11 +14,13 @@
 // You should have received a copy of the GNU General Public License along with
 // P2Poolv2. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::signal::{ShutdownReason, setup_signal_handler};
+use bitcoindrpc::BitcoinRpcConfig;
 use clap::Parser;
 use p2poolv2_api::start_api_server;
 use p2poolv2_lib::accounting::payout::sharechain_pplns::Payout;
 use p2poolv2_lib::accounting::stats::metrics;
-use p2poolv2_lib::config::Config;
+use p2poolv2_lib::config::{Config, Parsed, StratumConfig};
 use p2poolv2_lib::logging::setup_logging;
 use p2poolv2_lib::node::actor::NodeHandle;
 use p2poolv2_lib::pool_difficulty::PoolDifficulty;
@@ -30,15 +32,15 @@ use p2poolv2_lib::stratum::client_connections::start_connections_handler;
 use p2poolv2_lib::stratum::emission::Emission;
 use p2poolv2_lib::stratum::server::StratumServerBuilder;
 use p2poolv2_lib::stratum::work::gbt::start_gbt;
-use p2poolv2_lib::stratum::work::notify::start_notify;
+use p2poolv2_lib::stratum::work::notify::{Command as StratumNotifyCommand, start_notify};
 use p2poolv2_lib::stratum::work::tracker::start_tracker_actor;
 use p2poolv2_lib::stratum::zmq_listener::{ZmqListener, ZmqListenerTrait};
 use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::{error, info, trace};
-
-use crate::signal::{ShutdownReason, setup_signal_handler};
+use tokio::sync::watch::{Receiver, Sender};
+use tokio::sync::{mpsc, watch};
+use tracing::{debug, error, info, trace};
 
 mod background_tasks;
 mod preflight;
@@ -177,24 +179,14 @@ async fn main() -> ExitCode {
         }
     };
 
-    let exit_sender_gbt = exit_sender.clone();
-    let exit_receiver_gbt = exit_sender.subscribe();
-    tokio::spawn(async move {
-        if let Err(e) = start_gbt(
-            bitcoinrpc_config_cloned,
-            notify_tx_for_gbt,
-            GBT_POLL_INTERVAL,
-            stratum_config.network,
-            zmq_trigger_rx,
-        )
-        .await
-        {
-            if *exit_receiver_gbt.borrow() == ShutdownReason::None {
-                tracing::error!("Failed to fetch block template. Shutting down. \n {e}");
-                let _ = exit_sender_gbt.send(ShutdownReason::Error);
-            }
-        }
-    });
+    start_template_watcher(
+        exit_sender.clone(),
+        exit_sender.subscribe(),
+        &stratum_config,
+        notify_tx_for_gbt,
+        bitcoinrpc_config_cloned,
+        zmq_trigger_rx,
+    );
 
     let connections_handle = start_connections_handler().await;
 
@@ -393,4 +385,45 @@ async fn main() -> ExitCode {
     } else {
         ExitCode::FAILURE
     }
+}
+
+fn start_template_watcher(
+    exit_sender_gbt: watch::Sender<ShutdownReason>,
+    exit_receiver_gbt: watch::Receiver<ShutdownReason>,
+    StratumConfig { network, .. }: &StratumConfig<Parsed>,
+    notify_gbt_tx: mpsc::Sender<StratumNotifyCommand>,
+    bitcoinrpc_config_cloned: BitcoinRpcConfig,
+    zmq_trigger_rx: mpsc::Receiver<()>,
+) {
+    let network = *network;
+    tokio::spawn(async move {
+        #[cfg(not(feature = "ipc"))]
+        let res = start_gbt(
+            bitcoinrpc_config_cloned,
+            notify_gbt_tx,
+            GBT_POLL_INTERVAL,
+            network,
+            zmq_trigger_rx,
+        )
+        .await;
+        #[cfg(feature = "ipc")]
+        let res = start_gbt(
+            bitcoinrpc_config_cloned,
+            notify_gbt_tx,
+            GBT_POLL_INTERVAL,
+            network,
+            zmq_trigger_rx,
+        )
+        .await;
+
+        match res {
+            Err(e) if *exit_receiver_gbt.borrow() == ShutdownReason::None => {
+                tracing::error!("Failed to fetch block template. Shutting down. \n {e}");
+                let _ = exit_sender_gbt.send(ShutdownReason::Error);
+            }
+            _ => (),
+        }
+
+        debug!("GBT watcher launched");
+    });
 }

@@ -1,4 +1,4 @@
-set unstable := true
+set unstable
 
 dev_config := "." / "config-dev.toml"
 default_config := "." / "config.toml"
@@ -7,7 +7,7 @@ export P2POOL_CONFIG := env("P2POOL_CONFIG", target_config)
 
 # Set default log level if not provided through environment
 
-export LOG_LEVEL := env("RUST_LOG", "info")
+export RUST_LOG := env("RUST_LOG", "p2poolv2=debug,p2poolv2_lib=debug,p2poolv2_config=debug,p2poolv2_api=debug,info")
 export RUST_BACKTRACE := env("RUST_BACKTRACE", "1")
 
 _default:
@@ -105,7 +105,7 @@ fix:
 
 # Builds and opens local docs for all deps
 doc:
-    cargo doc --open --all
+    cargo doc --open --all --all-features
 
 # Creates the p2pool docker image
 [group("docker")]

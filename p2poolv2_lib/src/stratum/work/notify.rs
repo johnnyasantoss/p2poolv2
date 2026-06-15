@@ -119,8 +119,8 @@ fn build_prepared_notify(
     .build()
 }
 
-/// NotifyCmd is used to send a new block template to the notifier.
-pub enum NotifyCmd {
+/// Used to send a new block template to the notifier.
+pub enum Command {
     /// Send a new block template to all connected miners.
     SendToAll {
         /// The block template to notify clients about.
@@ -136,8 +136,8 @@ pub enum NotifyCmd {
 }
 
 /// Sender half of the notify command channel.
-pub type NotifySender = mpsc::Sender<NotifyCmd>;
-pub type NotifyReceiver = mpsc::Receiver<NotifyCmd>;
+pub type NotifySender = mpsc::Sender<Command>;
+pub type NotifyReceiver = mpsc::Receiver<Command>;
 
 /// Build a PreparedNotifyParams and publish it via the watch channel.
 ///
@@ -163,7 +163,7 @@ fn publish_prepared_notify(
 /// watch channel. Each connection handler receives the prepared
 /// template and builds per-miner notifies independently.
 pub async fn start_notify(
-    mut notifier_rx: mpsc::Receiver<NotifyCmd>,
+    mut notifier_rx: mpsc::Receiver<Command>,
     template_tx: watch::Sender<Option<Arc<PreparedNotifyParams>>>,
     chain_store_handle: ChainStoreHandle,
     config: &StratumConfig<crate::config::Parsed>,
@@ -187,7 +187,7 @@ pub async fn start_notify(
 
     while let Some(cmd) = notifier_rx.recv().await {
         match cmd {
-            NotifyCmd::SendToAll { template } => {
+            Command::SendToAll { template } => {
                 let clean_jobs = latest_template.is_none()
                     || latest_template.as_ref().unwrap().previousblockhash
                         != template.previousblockhash;
@@ -203,7 +203,7 @@ pub async fn start_notify(
                     continue;
                 }
             }
-            NotifyCmd::NewNotify => {
+            Command::NewNotify => {
                 if let Some(ref template) = latest_template {
                     debug!("NewNotify: sending notify with latest template");
                     if let Err(error) =
@@ -303,7 +303,7 @@ mod tests {
             watch::channel::<Option<Arc<PreparedNotifyParams>>>(None);
 
         // Create a channel for block template notifications
-        let (notify_tx, notify_rx) = mpsc::channel::<NotifyCmd>(10);
+        let (notify_tx, notify_rx) = mpsc::channel::<Command>(10);
 
         let mut chain_store_handle = ChainStoreHandle::default();
 
@@ -357,7 +357,7 @@ mod tests {
 
         // Send the template through the channel
         notify_tx
-            .send(NotifyCmd::SendToAll {
+            .send(Command::SendToAll {
                 template: Arc::new(template),
             })
             .await

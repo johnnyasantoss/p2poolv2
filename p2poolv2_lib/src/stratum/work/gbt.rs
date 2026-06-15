@@ -16,11 +16,11 @@
 
 use crate::stratum::work::block_template::BlockTemplate;
 use crate::stratum::work::error::WorkError;
-use crate::stratum::work::notify::{NotifyCmd, NotifySender};
+use crate::stratum::work::notify::{Command as StratumNotifyCommand, NotifySender};
 use bitcoin::hashes::{Hash, sha256d};
 use bitcoindrpc::{BitcoinRpcConfig, BitcoindRpcClient};
 use std::sync::Arc;
-use tracing::{debug, error, info, instrument};
+use tracing::{debug, error, instrument};
 
 #[cfg(test)]
 const GBT_NO_TRANSACTIONS_FIXTURE: &str =
@@ -28,7 +28,6 @@ const GBT_NO_TRANSACTIONS_FIXTURE: &str =
 
 /// Compute merkle branches for the transactions in the block template
 /// Uses private compute_merkle_branches after parsing the txids from the template
-#[allow(dead_code)]
 pub fn build_merkle_branches_for_template(template: &BlockTemplate) -> Vec<sha256d::Hash> {
     let txids = template
         .transactions
@@ -147,7 +146,7 @@ pub async fn start_gbt(
                     match get_block_template(&bitcoind, network).await {
                         Ok(template) => {
                             if result_tx
-                                .send(NotifyCmd::SendToAll {
+                                .send(StratumNotifyCommand::SendToAll {
                                     template: Arc::new(template),
                                 })
                                 .await
@@ -168,7 +167,7 @@ pub async fn start_gbt(
                             match get_block_template(&bitcoind, network).await {
                                 Ok(template) => {
                                     if result_tx
-                                        .send(NotifyCmd::SendToAll {
+                                        .send(StratumNotifyCommand::SendToAll {
                                             template: Arc::new(template),
                                         })
                                         .await
@@ -462,7 +461,7 @@ mod gbt_server_tests {
 
         assert!(timeout.is_ok());
         let cmd = timeout.unwrap().unwrap();
-        let NotifyCmd::SendToAll { template } = cmd else {
+        let StratumNotifyCommand::SendToAll { template } = cmd else {
             panic!("Expected SendToAll");
         };
         assert_eq!(template.height, 108);
@@ -521,7 +520,7 @@ mod gbt_server_tests {
 
         assert!(timeout.is_ok());
         let cmd = timeout.unwrap().unwrap();
-        let NotifyCmd::SendToAll { template } = cmd else {
+        let StratumNotifyCommand::SendToAll { template } = cmd else {
             panic!("Expected SendToAll");
         };
         assert_eq!(template.height, 108);

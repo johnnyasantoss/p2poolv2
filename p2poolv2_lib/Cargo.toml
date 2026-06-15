@@ -13,8 +13,10 @@ categories.workspace = true
 rust-version.workspace = true
 
 [features]
+default = []
 hydrapool-pplns-accounting = []
 test-utils = ["dep:rand", "dep:tempfile", "p2poolv2_config/test-utils"]
+ipc = ["dep:bitcoin-capnp"]
 
 [dependencies]
 # Optional test utilities dependencies
@@ -51,6 +53,7 @@ chrono = { workspace = true }
 dashmap = { workspace = true }
 uint = { workspace = true }
 rlimit = "0.11.0"
+bitcoin-capnp = { workspace = true, optional = true }
 
 [dev-dependencies]
 bitcoindrpc = { path = "../bitcoindrpc", features = ["test-utils"] }
