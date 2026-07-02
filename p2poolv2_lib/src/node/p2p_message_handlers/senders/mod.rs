@@ -2,11 +2,13 @@
 //
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+pub mod compact_block;
 pub mod getheaders;
 pub mod handshake;
 pub mod inventory;
 pub mod share_block;
 
+pub use compact_block::send_send_compact;
 pub use getheaders::send_getheaders;
 pub use handshake::send_handshake;
 pub use inventory::send_block_inventory;
