@@ -27,7 +27,7 @@ use crate::store::dag_store::{BlockValidSearch, ShareDag, UncleInfo};
 use crate::store::transaction_store::PrevoutCheck;
 use crate::store::writer::{StoreError, StoreHandle};
 use bitcoin::{BlockHash, Work};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tracing::{debug, info, warn};
 
@@ -62,7 +62,7 @@ fn is_tip_current(tip_time: u32, now_secs: u64) -> bool {
 ///
 /// Read operations are synchronous (may briefly block tokio threads),
 /// while writes are serialized through the store writer.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ChainStoreHandle {
     store_handle: StoreHandle,
     network: bitcoin::Network,
@@ -575,16 +575,9 @@ impl ChainStoreHandle {
     /// inconsistent enough to break that surfaces one step later regardless:
     /// `get_distribution_from_start_hash` follows the same parent pointers to
     /// build the payout and errors on a missing header.
-    pub fn get_mining_base_and_uncles(
-        &self,
-    ) -> Result<(BlockHash, HashSet<BlockHash>), StoreError> {
+    pub fn get_mining_base_and_uncles(&self) -> Result<(BlockHash, Vec<BlockHash>), StoreError> {
         let mining_base = self.get_mining_base()?;
-        let uncles: HashSet<BlockHash> = self
-            .store_handle
-            .store()
-            .find_uncles(&mining_base)?
-            .into_iter()
-            .collect();
+        let uncles = self.store_handle.store().find_uncles(&mining_base)?;
         Ok((mining_base, uncles))
     }
 
@@ -846,6 +839,7 @@ impl ChainStoreHandle {
 // Use with #[mockall_double::double] to swap real type for mock in tests
 #[cfg(test)]
 mockall::mock! {
+    #[derive(Debug)]
     pub ChainStoreHandle {
         pub fn is_candidate(&self, blockhash: &BlockHash) -> bool;
         pub fn get_block_metadata(&self, hash: &BlockHash) -> Result<BlockMetadata, StoreError>;
@@ -875,7 +869,7 @@ mockall::mock! {
         pub fn get_candidate_tip_header(&self) -> Result<ShareHeader, StoreError>;
         pub fn is_current(&self) -> bool;
         pub fn get_mining_base(&self) -> Result<BlockHash, StoreError>;
-        pub fn get_mining_base_and_uncles(&self) -> Result<(BlockHash, HashSet<BlockHash>), StoreError>;
+        pub fn get_mining_base_and_uncles(&self) -> Result<(BlockHash, Vec<BlockHash>), StoreError>;
         pub fn get_share_height_and_time(&self, share_hash: &BlockHash) -> Result<(u32, u32), StoreError>;
         pub fn get_genesis_blockhash(&self) -> Option<BlockHash>;
         pub fn get_genesis_header(&self) -> Result<ShareHeader, StoreError>;
