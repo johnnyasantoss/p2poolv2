@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The default stratum version rolling mask is the BIP323 mask `1fffffe0`
+  (v0.16.3 had reverted it to the BIP320 mask `1fffe000` because
+  `mining.configure` replies carried the configured mask without
+  intersecting it with the miner's offer; that defect is now fixed, so a
+  BIP320 offer still receives `1fffe000` back).
 - The `/pplns_shares` API endpoint takes `start_time` and `end_time` as unix
   seconds instead of RFC 3339 strings, e.g.
   `/pplns_shares?start_time=1760730000&end_time=1760730600`. Clients sending
@@ -27,6 +32,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - The `chrono` dependency, which is unmaintained (RUSTSEC-2026-0543).
+
+### Fixed
+
+- `mining.configure` follows BIP 310: the reply mask is the intersection of
+  the node's configured mask and the miner's offer, and a `version-rolling`
+  request without a `version-rolling.mask` parameter now gets a reply
+  (defaulting to `ffffffff`) instead of silence. Previously the node replied
+  with its configured mask unconditionally, so miners requiring an exact
+  match (bosminer, Antminer S19) failed stratum setup.
+- `mining.submit` rejects shares whose `version_bits` fall outside the
+  negotiated mask instead of silently stripping the out-of-mask bits.
 
 ## [v0.18.0] - 2026-11-14
 
