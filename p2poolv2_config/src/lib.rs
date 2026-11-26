@@ -14,7 +14,7 @@ mod chain;
 pub use chain::{Chain, UnknownChainError};
 
 /// Default version mask for BIP 323 version rolling.
-pub const DEFAULT_VERSION_MASK: i32 = 0x1fffe000;
+pub const DEFAULT_VERSION_MASK: i32 = 0x1fffffe0;
 
 /// Error type for configuration parsing and validation.
 #[derive(Debug, Clone)]
