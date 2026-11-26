@@ -48,8 +48,14 @@ pub struct Session<D: DifficultyAdjusterTrait> {
     pub worker_id: Option<u64>,
     /// Difficulty adjuster for the session
     pub difficulty_adjuster: D,
-    /// version_mask used in this session, defaults to one provided from config
+    /// Effective version mask for this session: the BIP 310 intersection of
+    /// `configured_version_mask` and the miner's offer, recomputed on every
+    /// accepted `mining.configure`. Starts equal to the configured mask.
+    /// Submit validation composes `nVersion` with this mask.
     pub version_mask: i32,
+    /// Operator-configured server mask from `[stratum] version_mask`. Server
+    /// side of the BIP 310 intersection; never changes for the session.
+    pub configured_version_mask: i32,
     /// Difficulty suggested by the client
     pub suggested_difficulty: Option<u64>,
     /// True when the miner set its difficulty with `d=` or `th=` in the
@@ -93,6 +99,7 @@ impl<D: DifficultyAdjusterTrait> Session<D> {
             worker_id: None,
             difficulty_adjuster: D::new(start_difficulty, minimum_difficulty, maximum_difficulty),
             version_mask,
+            configured_version_mask: version_mask,
             suggested_difficulty: None,
             difficulty_from_password: false,
             connected_at: now,

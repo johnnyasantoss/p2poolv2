@@ -40,7 +40,9 @@ pub fn build_coinbase_from_components(
         .map_err(|_e| Error::InvalidParams("Failed to decode coinbase transaction".into()))
 }
 
-/// Applies version mask received with submission, if the version_bits is compatible with version_mask from session
+/// Composes the submitted version_bits into the header version with the
+/// session's negotiated mask. BIP 310 requires rejecting a submit whose
+/// version_bits fall outside the negotiated mask (`version_bits & ~mask == 0`).
 /// If params don't include version_bits, it returns the original header version
 fn apply_version_mask(
     header_version: i32,
@@ -58,6 +60,11 @@ fn apply_version_mask(
                 .try_into()
                 .map_err(|_| Error::InvalidParams("Invalid version bits length".into()))?,
         );
+        if bits & !version_mask != 0 {
+            return Err(Error::InvalidParams(
+                "Version bits outside negotiated version mask".into(),
+            ));
+        }
         Ok((header_version & !version_mask) | (bits & version_mask))
     } else {
         Ok(header_version)
@@ -136,4 +143,46 @@ pub fn validate_bitcoin_difficulty(
         coinbase,
         meets_bitcoin_difficulty,
     })
+}
+
+#[cfg(test)]
+mod apply_version_mask_tests {
+    use super::*;
+
+    #[test]
+    fn test_apply_version_mask_rejects_bits_outside_mask() {
+        let params = vec![
+            Some("worker".to_string()),
+            Some("job_id".to_string()),
+            Some("extranonce2".to_string()),
+            Some("ntime".to_string()),
+            Some("nonce".to_string()),
+            Some("00000001".to_string()),
+        ];
+
+        let result = apply_version_mask(0x20000000, 0x1fffe000, &params);
+
+        match result {
+            Err(Error::InvalidParams(message)) => {
+                assert_eq!(message, "Version bits outside negotiated version mask")
+            }
+            other => panic!("Expected InvalidParams error, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_apply_version_mask_accepts_bits_inside_mask() {
+        let params = vec![
+            Some("worker".to_string()),
+            Some("job_id".to_string()),
+            Some("extranonce2".to_string()),
+            Some("ntime".to_string()),
+            Some("nonce".to_string()),
+            Some("083ac000".to_string()),
+        ];
+
+        let version = apply_version_mask(0x20000000, 0x1fffe000, &params).unwrap();
+
+        assert_eq!(version, 0x283ac000);
+    }
 }
